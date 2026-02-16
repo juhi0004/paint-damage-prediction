@@ -11,18 +11,6 @@ warnings.filterwarnings('ignore')
 def load_shipment_data(filepath, file_type='csv'):
     """
     Load shipment data from CSV or Excel file
-    
-    Parameters:
-    -----------
-    filepath : str
-        Path to the data file
-    file_type : str
-        'csv' or 'excel'
-    
-    Returns:
-    --------
-    pd.DataFrame
-        Loaded shipment data
     """
     try:
         if file_type == 'csv':
@@ -43,19 +31,17 @@ def load_shipment_data(filepath, file_type='csv'):
 def standardize_column_names(df):
     """
     Standardize column names to expected format
-    
-    Expected columns:
-    - Date, Dealer_Code, Warehouse, Product_Code, Vehicle, Shipped, Returned
     """
-    # Create mapping for common variations
     column_mapping = {
         'date': 'Date',
         'dealer code': 'Dealer_Code',
         'dealer': 'Dealer_Code',
+        'dealer_code': 'Dealer_Code',
         'dealercode': 'Dealer_Code',
         'warehouse': 'Warehouse',
         'product code': 'Product_Code',
         'product': 'Product_Code',
+        'product_code': 'Product_Code',
         'productcode': 'Product_Code',
         'vehicle': 'Vehicle',
         'shipped': 'Shipped',
@@ -65,15 +51,13 @@ def standardize_column_names(df):
         'damage': 'Returned'
     }
     
-    # Normalize column names (lowercase, strip spaces)
     df.columns = df.columns.str.lower().str.strip()
-    
-    # Apply mapping
     df = df.rename(columns=column_mapping)
     
-    # Check if all required columns are present
-    required_columns = ['Date', 'Dealer_Code', 'Warehouse', 'Product_Code', 
-                       'Vehicle', 'Shipped', 'Returned']
+    required_columns = [
+        'Date', 'Dealer_Code', 'Warehouse',
+        'Product_Code', 'Vehicle', 'Shipped', 'Returned'
+    ]
     
     missing_columns = [col for col in required_columns if col not in df.columns]
     
@@ -89,29 +73,28 @@ def standardize_column_names(df):
 def parse_dates(df, date_column='Date'):
     """
     Parse date column to datetime format
-    Handle multiple date formats
+    Handle multiple date formats (SAFE)
     """
     try:
-        # Try multiple date formats
-        date_formats = ['%d/%m/%y', '%d/%m/%Y', '%Y-%m-%d', '%m/%d/%Y', '%d-%m-%Y']
-        
-        parsed = False
-        for fmt in date_formats:
-            try:
-                df[date_column] = pd.to_datetime(df[date_column], format=fmt)
-                parsed = True
-                print(f"✓ Dates parsed successfully using format: {fmt}")
-                break
-            except:
-                continue
-        
-        if not parsed:
-            # Let pandas infer the format
-            df[date_column] = pd.to_datetime(df[date_column], infer_datetime_format=True)
-            print("✓ Dates parsed using auto-detection")
-        
+        # Convert to string to avoid dtype issues
+        df[date_column] = df[date_column].astype(str)
+
+        # Use pandas mixed-format parser (fixes 13/1/07 issue)
+        df[date_column] = pd.to_datetime(
+            df[date_column],
+            format="mixed",
+            dayfirst=True,
+            errors="coerce"
+        )
+
+        nat_count = df[date_column].isna().sum()
+        if nat_count > 0:
+            print(f"⚠ Warning: {nat_count} invalid date(s) converted to NaT")
+
+        print("✓ Dates parsed successfully using mixed format")
+
         return df
-    
+
     except Exception as e:
         print(f"✗ Error parsing dates: {str(e)}")
         raise
