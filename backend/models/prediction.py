@@ -1,22 +1,14 @@
 """
-Pydantic models for prediction requests and responses
+Pydantic models for damage prediction
 """
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, validator
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import List, Dict, Optional
 from enum import Enum
-
-from app.models.shipment import VehicleType, Warehouse
-
-
-class ModelType(str, Enum):
-    """Available model types"""
-    XGBOOST = "xgboost"
-    ENSEMBLE = "ensemble"
 
 
 class RiskCategory(str, Enum):
-    """Risk category levels"""
+    """Risk category enum"""
     LOW = "Low"
     MEDIUM = "Medium"
     HIGH = "High"
@@ -25,41 +17,50 @@ class RiskCategory(str, Enum):
 
 class PredictionRequest(BaseModel):
     """Request model for damage prediction"""
-    date: datetime = Field(..., description="Shipment date")
-    dealer_code: int = Field(..., ge=1, le=100, description="Dealer code (1-100)")
-    warehouse: Warehouse = Field(..., description="Warehouse location")
-    product_code: str = Field(..., min_length=9, max_length=9, description="9-digit product code")
-    vehicle: VehicleType = Field(..., description="Vehicle type")
-    shipped: int = Field(..., ge=1, description="Number of tins shipped")
-    model: Optional[ModelType] = Field(default=ModelType.XGBOOST, description="Model to use for prediction")
+    date: datetime = Field(default_factory=datetime.now, description="Shipment date")
+    dealer_code: int = Field(..., ge=1, le=100)
+    warehouse: str = Field(..., min_length=3, max_length=3)
+    product_code: str = Field(..., min_length=9, max_length=9)
+    vehicle: str = Field(..., description="Vehicle type: Autorickshaw, Vikram, or Minitruck")
+    shipped: int = Field(..., ge=1, description="Number of tins to ship")
 
-    @field_validator('product_code')
-    @classmethod
+    @validator('product_code')
     def validate_product_code(cls, v):
-        """Validate product code is 9 digits"""
         if not v.isdigit():
             raise ValueError('Product code must contain only digits')
         return v
 
-    model_config = {
-        "json_schema_extra": {
+    @validator('warehouse')
+    def validate_warehouse(cls, v):
+        v = v.upper()
+        if v not in ['NAG', 'MUM', 'GOA', 'KOL', 'PUN']:
+            raise ValueError('Invalid warehouse code')
+        return v
+
+    @validator('vehicle')
+    def validate_vehicle(cls, v):
+        v = v.title()
+        if v not in ['Autorickshaw', 'Vikram', 'Minitruck']:
+            raise ValueError('Invalid vehicle type')
+        return v
+
+    class Config:
+        json_schema_extra = {
             "example": {
-                "date": "2026-02-21T10:00:00",
+                "date": "2026-02-17T10:00:00",
                 "dealer_code": 17,
                 "warehouse": "NAG",
                 "product_code": "321123678",
                 "vehicle": "Minitruck",
-                "shipped": 25,
-                "model": "xgboost"
+                "shipped": 25
             }
         }
-    }
 
 
 class RecommendationItem(BaseModel):
-    """Single recommendation item"""
-    priority: str = Field(..., description="Priority level (LOW/MEDIUM/HIGH/CRITICAL)")
-    category: str = Field(..., description="Recommendation category")
+    """Single recommendation"""
+    priority: str = Field(..., description="Priority level: CRITICAL, HIGH, MEDIUM, LOW")
+    category: str = Field(..., description="Category: Loading, Vehicle, Dealer, Packaging, etc.")
     message: str = Field(..., description="Recommendation message")
     impact: str = Field(..., description="Expected impact")
 
@@ -82,7 +83,7 @@ class PredictionResponse(BaseModel):
     estimated_loss: float = Field(..., ge=0, description="Estimated financial loss in INR")
     
     # Model insights
-    model_name: str = Field(..., description="Model used for prediction")
+    model_used: str = Field(..., description="Model used for prediction")
     feature_importance: Dict[str, float] = Field(default_factory=dict, description="Top contributing factors")
     
     # Recommendations
@@ -94,14 +95,13 @@ class PredictionResponse(BaseModel):
     is_overloaded: bool = Field(default=False)
     loading_ratio: Optional[float] = None
 
-    model_config = {
-        "protected_namespaces": (),
-        "json_schema_extra": {
+    class Config:
+        json_schema_extra = {
             "example": {
                 "prediction_id": "pred_507f1f77bcf86cd799439011",
-                "timestamp": "2026-02-21T10:05:00",
+                "timestamp": "2026-02-17T10:05:00",
                 "input": {
-                    "date": "2026-02-21T10:00:00",
+                    "date": "2026-02-17T10:00:00",
                     "dealer_code": 17,
                     "warehouse": "NAG",
                     "product_code": "321123678",
@@ -113,52 +113,42 @@ class PredictionResponse(BaseModel):
                 "risk_category": "Medium",
                 "confidence_score": 0.87,
                 "estimated_loss": 1600.0,
-                "model_name": "XGBOOST",
+                "model_used": "XGBoost Ensemble",
                 "feature_importance": {
                     "loading_ratio": 0.35,
                     "dealer_historical_damage": 0.28,
                     "vehicle_type": 0.15
                 },
-                "recommendations": [],
+                "recommendations": [
+                    {
+                        "priority": "MEDIUM",
+                        "category": "Loading",
+                        "message": "Loading within safe limits",
+                        "impact": "Maintains normal damage rate"
+                    }
+                ],
                 "is_overloaded": False,
                 "loading_ratio": 0.625
             }
         }
-    }
 
 
 class BatchPredictionRequest(BaseModel):
-    """Request model for batch predictions"""
-    shipments: List[PredictionRequest] = Field(..., min_length=1, max_length=100)
-    model: Optional[ModelType] = Field(default=ModelType.XGBOOST)
+    """Request for batch predictions"""
+    shipments: List[PredictionRequest] = Field(..., max_length=100, description="Max 100 shipments per batch")
 
-
-class BatchPredictionSummary(BaseModel):
-    """Summary statistics for batch predictions"""
-    total_shipments: int
-    successful_predictions: int
-    failed_predictions: int
-    average_damage_rate: float
-    risk_distribution: Dict[str, int]
-    total_estimated_loss: float
-    high_risk_shipments: int
+    @validator('shipments')
+    def validate_batch_size(cls, v):
+        if len(v) > 100:
+            raise ValueError('Maximum 100 shipments per batch request')
+        if len(v) == 0:
+            raise ValueError('At least one shipment required')
+        return v
 
 
 class BatchPredictionResponse(BaseModel):
-    """Response model for batch predictions"""
+    """Response for batch predictions"""
     batch_id: str
-    timestamp: datetime = Field(default_factory=datetime.now)
     total_shipments: int
     predictions: List[PredictionResponse]
-    summary: BatchPredictionSummary
-
-
-class ModelInfo(BaseModel):
-    """Information about available models"""
-    name: str
-    type: str
-    version: str
-    accuracy: Optional[float] = None
-    features: int
-    last_trained: Optional[datetime] = None
-    status: str = "active"
+    summary: Dict[str, any] = Field(default_factory=dict)

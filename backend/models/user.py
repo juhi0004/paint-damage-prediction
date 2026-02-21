@@ -43,9 +43,8 @@ class UserResponse(UserBase):
     created_at: datetime
     last_login: Optional[datetime] = None
 
-    model_config = {
-        "populate_by_name": True
-    }
+    class Config:
+        populate_by_name = True
 
 
 class Token(BaseModel):

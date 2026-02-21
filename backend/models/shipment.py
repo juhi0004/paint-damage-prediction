@@ -1,7 +1,7 @@
 """
 Pydantic models for shipment data
 """
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, validator
 from datetime import datetime
 from typing import Optional
 from enum import Enum
@@ -33,8 +33,7 @@ class ShipmentBase(BaseModel):
     shipped: int = Field(..., ge=1, description="Number of tins shipped (must be positive)")
     returned: Optional[int] = Field(None, ge=0, description="Number of tins returned")
 
-    @field_validator('product_code')
-    @classmethod
+    @validator('product_code')
     def validate_product_code(cls, v):
         """Validate product code is 9 digits"""
         if not v.isdigit():
@@ -43,11 +42,10 @@ class ShipmentBase(BaseModel):
             raise ValueError('Product code must be exactly 9 digits')
         return v
 
-    @field_validator('returned')
-    @classmethod
-    def validate_returned(cls, v, info):
+    @validator('returned')
+    def validate_returned(cls, v, values):
         """Validate returned is not greater than shipped"""
-        if v is not None and 'shipped' in info.data and v > info.data['shipped']:
+        if v is not None and 'shipped' in values and v > values['shipped']:
             raise ValueError('Returned tins cannot exceed shipped tins')
         return v
 
@@ -70,9 +68,9 @@ class ShipmentResponse(ShipmentBase):
     created_at: datetime
     updated_at: datetime
 
-    model_config = {
-        "populate_by_name": True,
-        "json_schema_extra": {
+    class Config:
+        populate_by_name = True
+        json_schema_extra = {
             "example": {
                 "_id": "507f1f77bcf86cd799439011",
                 "date": "2007-01-15T00:00:00",
@@ -88,4 +86,3 @@ class ShipmentResponse(ShipmentBase):
                 "updated_at": "2026-02-17T09:00:00"
             }
         }
-    }
