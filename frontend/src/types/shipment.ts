@@ -11,7 +11,7 @@ export interface ShipmentBase {
   returned?: number;
 }
 
-export interface ShipmentCreate extends ShipmentBase {}
+export type ShipmentCreate = ShipmentBase;
 
 export interface ShipmentResponse extends ShipmentBase {
   _id: string;

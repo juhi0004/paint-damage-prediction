@@ -1,4 +1,4 @@
-import React, { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
@@ -6,20 +6,25 @@ interface PrivateRouteProps {
   children: ReactNode;
 }
 
-const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
+function PrivateRoute({ children }: PrivateRouteProps) {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return (
       <div
-        style={{ display: "flex", justifyContent: "center", padding: "4rem" }}
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "100vh",
+        }}
       >
-        Loading...
+        <div style={{ fontSize: "1.5rem", color: "#64748b" }}>Loading...</div>
       </div>
     );
   }
 
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
-};
+  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+}
 
 export default PrivateRoute;

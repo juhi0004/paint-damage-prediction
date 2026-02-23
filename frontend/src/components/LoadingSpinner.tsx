@@ -1,6 +1,4 @@
-import React from "react";
-
-const LoadingSpinner: React.FC = () => {
+function LoadingSpinner() {
   return (
     <div style={{ display: "flex", justifyContent: "center", padding: "2rem" }}>
       <div
@@ -21,6 +19,6 @@ const LoadingSpinner: React.FC = () => {
       `}</style>
     </div>
   );
-};
+}
 
 export default LoadingSpinner;

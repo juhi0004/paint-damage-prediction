@@ -1,9 +1,8 @@
-import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getTopDealers, getWarehouseAnalytics } from "../api/analytics";
 import LoadingSpinner from "../components/LoadingSpinner";
 
-const AnalyticsPage: React.FC = () => {
+function AnalyticsPage() {
   const { data: dealers, isLoading: loadingDealers } = useQuery({
     queryKey: ["top-dealers"],
     queryFn: () => getTopDealers(10),
@@ -155,6 +154,6 @@ const AnalyticsPage: React.FC = () => {
       </div>
     </div>
   );
-};
+}
 
 export default AnalyticsPage;

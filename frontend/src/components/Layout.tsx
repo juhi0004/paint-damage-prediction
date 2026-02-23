@@ -1,4 +1,4 @@
-import React, { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
@@ -6,7 +6,7 @@ interface LayoutProps {
   children: ReactNode;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children }) => {
+function Layout({ children }: LayoutProps) {
   const { user, logout, isAuthenticated } = useAuth();
   const location = useLocation();
 
@@ -101,6 +101,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </footer>
     </div>
   );
-};
+}
 
 export default Layout;

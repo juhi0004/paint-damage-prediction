@@ -1,24 +1,35 @@
-import React, { useState } from "react";
+import { useState } from "react";
+import type { FormEvent } from "react";
+
 import { useAuth } from "../hooks/useAuth";
 
-const LoginPage: React.FC = () => {
+function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
 
     try {
       await login({ email, password });
-    } catch (err: any) {
-      setError(err.response?.data?.detail || "Login failed. Please try again.");
-    } finally {
-      setIsLoading(false);
+    } catch (err: unknown) {
+      if (typeof err === "object" && err !== null && "response" in err) {
+        const axiosError = err as {
+          response?: { data?: { detail?: string } };
+        };
+
+        setError(
+          axiosError.response?.data?.detail ??
+            "Login failed. Please try again.",
+        );
+      } else {
+        setError("Login failed. Please try again.");
+      }
     }
   };
 
@@ -155,6 +166,6 @@ const LoginPage: React.FC = () => {
       </div>
     </div>
   );
-};
+}
 
 export default LoginPage;

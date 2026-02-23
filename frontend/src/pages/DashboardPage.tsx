@@ -1,160 +1,97 @@
-import React, { useState } from "react";
-import { useAuth } from "../hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
+import { getAnalyticsSummary } from "../api/analytics";
+import LoadingSpinner from "../components/LoadingSpinner";
 
-const LoginPage: React.FC = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+function DashboardPage() {
+  const {
+    data: summary,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["analytics-summary"],
+    queryFn: getAnalyticsSummary,
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setIsLoading(true);
+  if (isLoading) return <LoadingSpinner />;
+  if (error) return <div>Error loading dashboard data</div>;
+  if (!summary) return null;
 
-    try {
-      await login({ email, password });
-    } catch (err: any) {
-      setError(err.response?.data?.detail || "Login failed. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const cards = [
+    {
+      label: "Total Shipments",
+      value: summary.total_shipments,
+      color: "#3b82f6",
+    },
+    {
+      label: "Tins Shipped",
+      value: summary.total_tins_shipped.toLocaleString(),
+      color: "#10b981",
+    },
+    {
+      label: "Tins Returned",
+      value: summary.total_tins_returned.toLocaleString(),
+      color: "#ef4444",
+    },
+    {
+      label: "Avg Damage Rate",
+      value: `${(summary.average_damage_rate * 100).toFixed(2)}%`,
+      color: "#f59e0b",
+    },
+    {
+      label: "Total Loss",
+      value: `₹${summary.total_estimated_loss.toLocaleString()}`,
+      color: "#ef4444",
+    },
+    {
+      label: "High Risk Shipments",
+      value: summary.high_risk_shipments,
+      color: "#f97316",
+    },
+  ];
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-      }}
-    >
+    <div>
+      <h1 style={{ marginBottom: "2rem", fontSize: "2rem", color: "#1e293b" }}>
+        Dashboard
+      </h1>
+
       <div
         style={{
-          background: "white",
-          padding: "3rem",
-          borderRadius: "0.5rem",
-          boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
-          width: "100%",
-          maxWidth: "400px",
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+          gap: "1.5rem",
         }}
       >
-        <h1
-          style={{
-            textAlign: "center",
-            marginBottom: "2rem",
-            color: "#1e293b",
-          }}
-        >
-          Paint Damage Prediction
-        </h1>
-
-        <form
-          onSubmit={handleSubmit}
-          style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}
-        >
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "0.5rem",
-                fontWeight: 500,
-              }}
-            >
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              style={{
-                width: "100%",
-                padding: "0.75rem",
-                border: "1px solid #cbd5e1",
-                borderRadius: "0.25rem",
-                fontSize: "1rem",
-              }}
-              placeholder="admin@example.com"
-            />
-          </div>
-
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "0.5rem",
-                fontWeight: 500,
-              }}
-            >
-              Password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              style={{
-                width: "100%",
-                padding: "0.75rem",
-                border: "1px solid #cbd5e1",
-                borderRadius: "0.25rem",
-                fontSize: "1rem",
-              }}
-              placeholder="••••••••"
-            />
-          </div>
-
-          {error && (
-            <div
-              style={{
-                padding: "0.75rem",
-                background: "#fee2e2",
-                color: "#991b1b",
-                borderRadius: "0.25rem",
-                fontSize: "0.875rem",
-              }}
-            >
-              {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={isLoading}
+        {cards.map((card, idx) => (
+          <div
+            key={idx}
             style={{
-              width: "100%",
-              padding: "0.75rem",
-              background: "#38bdf8",
-              color: "white",
-              border: "none",
-              borderRadius: "0.25rem",
-              fontSize: "1rem",
-              fontWeight: 600,
-              cursor: isLoading ? "not-allowed" : "pointer",
-              opacity: isLoading ? 0.6 : 1,
+              background: "white",
+              padding: "1.5rem",
+              borderRadius: "0.5rem",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+              borderLeft: `4px solid ${card.color}`,
             }}
           >
-            {isLoading ? "Logging in..." : "Login"}
-          </button>
-        </form>
-
-        <p
-          style={{
-            marginTop: "1.5rem",
-            textAlign: "center",
-            fontSize: "0.875rem",
-            color: "#64748b",
-          }}
-        >
-          Demo: admin@example.com / admin123
-        </p>
+            <p
+              style={{
+                fontSize: "0.875rem",
+                color: "#64748b",
+                marginBottom: "0.5rem",
+              }}
+            >
+              {card.label}
+            </p>
+            <p
+              style={{ fontSize: "2rem", fontWeight: "bold", color: "#1e293b" }}
+            >
+              {card.value}
+            </p>
+          </div>
+        ))}
       </div>
     </div>
   );
-};
+}
 
-export default LoginPage;
+export default DashboardPage;
