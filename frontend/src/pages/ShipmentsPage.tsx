@@ -1,17 +1,14 @@
-import { useState, useMemo, FormEvent, ChangeEvent } from "react";
+import { useState, useMemo } from "react";
+import type { FormEvent, ChangeEvent } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
 import { getShipments, createShipment } from "../api/shipments";
-import type {
-  ShipmentCreate,
-  ShipmentResponse,
-  VehicleType,
-  Warehouse,
-} from "../types/shipment";
+import type { ShipmentCreate, VehicleType, Warehouse } from "../types/shipment";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { exportToCSV } from "../utils/export";
-import { formatDateForInput, isDateInRange } from "../utils/dateUtils";
+import { isDateInRange } from "../utils/dateUtils";
+import type { AxiosError } from "axios";
 
 const warehouses: Warehouse[] = ["NAG", "MUM", "GOA", "KOL", "PUN"];
 const vehicles: VehicleType[] = ["Autorickshaw", "Vikram", "Minitruck"];
@@ -21,7 +18,6 @@ function ShipmentsPage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
 
-  // Form state
   const [form, setForm] = useState<ShipmentCreate>({
     date: new Date().toISOString(),
     dealer_code: 1,
@@ -31,14 +27,11 @@ function ShipmentsPage() {
     shipped: 10,
   });
 
-  // Filter states
   const [searchQuery, setSearchQuery] = useState("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [warehouseFilter, setWarehouseFilter] = useState<string>("all");
   const [vehicleFilter, setVehicleFilter] = useState<string>("all");
-
-  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
 
   const { data: shipments, isLoading } = useQuery({
@@ -61,17 +54,15 @@ function ShipmentsPage() {
         shipped: 10,
       });
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ detail?: string }>) => {
       toast.error(error.response?.data?.detail || "Failed to create shipment");
     },
   });
 
-  // Filtered and paginated data
   const filteredShipments = useMemo(() => {
     if (!shipments) return [];
 
     return shipments.filter((shipment) => {
-      // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const matchesSearch =
@@ -82,19 +73,16 @@ function ShipmentsPage() {
         if (!matchesSearch) return false;
       }
 
-      // Date range filter
       if (startDate || endDate) {
         const start = startDate ? new Date(startDate) : null;
         const end = endDate ? new Date(endDate) : null;
         if (!isDateInRange(shipment.date, start, end)) return false;
       }
 
-      // Warehouse filter
       if (warehouseFilter !== "all" && shipment.warehouse !== warehouseFilter) {
         return false;
       }
 
-      // Vehicle filter
       if (vehicleFilter !== "all" && shipment.vehicle !== vehicleFilter) {
         return false;
       }
@@ -110,14 +98,12 @@ function ShipmentsPage() {
     vehicleFilter,
   ]);
 
-  // Pagination
   const totalPages = Math.ceil(filteredShipments.length / ITEMS_PER_PAGE);
   const paginatedShipments = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     return filteredShipments.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [filteredShipments, currentPage]);
 
-  // Reset to page 1 when filters change
   const handleFilterChange = () => {
     setCurrentPage(1);
   };
@@ -190,79 +176,90 @@ function ShipmentsPage() {
     vehicleFilter !== "all";
 
   return (
-    <div>
+    <div style={{ padding: "1rem" }}>
       {/* Header */}
       <div
         style={{
           display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "2rem",
+          flexDirection: "column",
+          gap: "1rem",
+          marginBottom: "1.5rem",
         }}
       >
-        <div>
-          <h1
-            style={{
-              fontSize: "2rem",
-              color: "#1e293b",
-              marginBottom: "0.25rem",
-            }}
-          >
-            Shipments
-          </h1>
-          <p style={{ fontSize: "0.875rem", color: "#64748b" }}>
-            {filteredShipments.length} of {shipments?.length || 0} shipments
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: "0.75rem" }}>
-          <button
-            onClick={handleExportCSV}
-            disabled={!filteredShipments.length}
-            style={{
-              background: filteredShipments.length ? "#10b981" : "#cbd5e1",
-              color: "white",
-              border: "none",
-              padding: "0.75rem 1.5rem",
-              borderRadius: "0.375rem",
-              cursor: filteredShipments.length ? "pointer" : "not-allowed",
-              fontWeight: 600,
-              fontSize: "0.875rem",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-            }}
-          >
-            <svg
-              width="16"
-              height="16"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "1rem",
+          }}
+        >
+          <div>
+            <h1
+              style={{
+                fontSize: "1.75rem",
+                color: "#1e293b",
+                marginBottom: "0.25rem",
+                fontWeight: 600,
+              }}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-              />
-            </svg>
-            Export CSV
-          </button>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            style={{
-              background: showForm ? "#64748b" : "#38bdf8",
-              color: "white",
-              border: "none",
-              padding: "0.75rem 1.5rem",
-              borderRadius: "0.375rem",
-              cursor: "pointer",
-              fontWeight: 600,
-              fontSize: "0.875rem",
-            }}
-          >
-            {showForm ? "✕ Cancel" : "+ Create Shipment"}
-          </button>
+              Shipments
+            </h1>
+            <p style={{ fontSize: "0.875rem", color: "#64748b" }}>
+              {filteredShipments.length} of {shipments?.length || 0} shipments
+            </p>
+          </div>
+          <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+            <button
+              onClick={handleExportCSV}
+              disabled={!filteredShipments.length}
+              style={{
+                background: filteredShipments.length ? "#10b981" : "#cbd5e1",
+                color: "white",
+                border: "none",
+                padding: "0.625rem 1rem",
+                borderRadius: "0.375rem",
+                cursor: filteredShipments.length ? "pointer" : "not-allowed",
+                fontWeight: 600,
+                fontSize: "0.875rem",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+              }}
+            >
+              <svg
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
+              </svg>
+              Export CSV
+            </button>
+            <button
+              onClick={() => setShowForm(!showForm)}
+              style={{
+                background: showForm ? "#64748b" : "#38bdf8",
+                color: "white",
+                border: "none",
+                padding: "0.625rem 1rem",
+                borderRadius: "0.375rem",
+                cursor: "pointer",
+                fontWeight: 600,
+                fontSize: "0.875rem",
+              }}
+            >
+              {showForm ? "✕ Cancel" : "+ Create Shipment"}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -271,20 +268,27 @@ function ShipmentsPage() {
         <div
           style={{
             background: "white",
-            padding: "2rem",
+            padding: "1.5rem",
             borderRadius: "0.5rem",
             boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-            marginBottom: "2rem",
+            marginBottom: "1.5rem",
           }}
         >
-          <h2 style={{ marginBottom: "1.5rem", fontSize: "1.25rem" }}>
+          <h2
+            style={{
+              marginBottom: "1.5rem",
+              fontSize: "1.125rem",
+              color: "#1e293b",
+              fontWeight: 600,
+            }}
+          >
             Create New Shipment
           </h2>
           <form
             onSubmit={handleSubmit}
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 1fr",
+              gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
               gap: "1rem",
             }}
           >
@@ -295,6 +299,7 @@ function ShipmentsPage() {
                   marginBottom: "0.5rem",
                   fontWeight: 500,
                   fontSize: "0.875rem",
+                  color: "#475569",
                 }}
               >
                 Date & Time
@@ -311,10 +316,12 @@ function ShipmentsPage() {
                 }
                 style={{
                   width: "100%",
-                  padding: "0.5rem",
+                  padding: "0.625rem",
                   border: "1px solid #cbd5e1",
-                  borderRadius: "0.25rem",
+                  borderRadius: "0.375rem",
                   fontSize: "0.875rem",
+                  background: "white",
+                  color: "#1e293b",
                 }}
               />
             </div>
@@ -326,6 +333,7 @@ function ShipmentsPage() {
                   marginBottom: "0.5rem",
                   fontWeight: 500,
                   fontSize: "0.875rem",
+                  color: "#475569",
                 }}
               >
                 Dealer Code (1-100)
@@ -339,10 +347,12 @@ function ShipmentsPage() {
                 max={100}
                 style={{
                   width: "100%",
-                  padding: "0.5rem",
+                  padding: "0.625rem",
                   border: "1px solid #cbd5e1",
-                  borderRadius: "0.25rem",
+                  borderRadius: "0.375rem",
                   fontSize: "0.875rem",
+                  background: "white",
+                  color: "#1e293b",
                 }}
               />
             </div>
@@ -354,6 +364,7 @@ function ShipmentsPage() {
                   marginBottom: "0.5rem",
                   fontWeight: 500,
                   fontSize: "0.875rem",
+                  color: "#475569",
                 }}
               >
                 Warehouse
@@ -364,10 +375,12 @@ function ShipmentsPage() {
                 onChange={handleChange}
                 style={{
                   width: "100%",
-                  padding: "0.5rem",
+                  padding: "0.625rem",
                   border: "1px solid #cbd5e1",
-                  borderRadius: "0.25rem",
+                  borderRadius: "0.375rem",
                   fontSize: "0.875rem",
+                  background: "white",
+                  color: "#1e293b",
                 }}
               >
                 {warehouses.map((w) => (
@@ -385,6 +398,7 @@ function ShipmentsPage() {
                   marginBottom: "0.5rem",
                   fontWeight: 500,
                   fontSize: "0.875rem",
+                  color: "#475569",
                 }}
               >
                 Product Code (9 digits)
@@ -398,11 +412,13 @@ function ShipmentsPage() {
                 pattern="\d{9}"
                 style={{
                   width: "100%",
-                  padding: "0.5rem",
+                  padding: "0.625rem",
                   border: "1px solid #cbd5e1",
-                  borderRadius: "0.25rem",
+                  borderRadius: "0.375rem",
                   fontSize: "0.875rem",
                   fontFamily: "monospace",
+                  background: "white",
+                  color: "#1e293b",
                 }}
               />
             </div>
@@ -414,6 +430,7 @@ function ShipmentsPage() {
                   marginBottom: "0.5rem",
                   fontWeight: 500,
                   fontSize: "0.875rem",
+                  color: "#475569",
                 }}
               >
                 Vehicle Type
@@ -424,10 +441,12 @@ function ShipmentsPage() {
                 onChange={handleChange}
                 style={{
                   width: "100%",
-                  padding: "0.5rem",
+                  padding: "0.625rem",
                   border: "1px solid #cbd5e1",
-                  borderRadius: "0.25rem",
+                  borderRadius: "0.375rem",
                   fontSize: "0.875rem",
+                  background: "white",
+                  color: "#1e293b",
                 }}
               >
                 {vehicles.map((v) => (
@@ -445,6 +464,7 @@ function ShipmentsPage() {
                   marginBottom: "0.5rem",
                   fontWeight: 500,
                   fontSize: "0.875rem",
+                  color: "#475569",
                 }}
               >
                 Shipped Quantity (tins)
@@ -457,10 +477,12 @@ function ShipmentsPage() {
                 min={1}
                 style={{
                   width: "100%",
-                  padding: "0.5rem",
+                  padding: "0.625rem",
                   border: "1px solid #cbd5e1",
-                  borderRadius: "0.25rem",
+                  borderRadius: "0.375rem",
                   fontSize: "0.875rem",
+                  background: "white",
+                  color: "#1e293b",
                 }}
               />
             </div>
@@ -497,15 +519,24 @@ function ShipmentsPage() {
           marginBottom: "1.5rem",
         }}
       >
+        <h3
+          style={{
+            marginBottom: "1rem",
+            fontSize: "1rem",
+            color: "#1e293b",
+            fontWeight: 600,
+          }}
+        >
+          Filters
+        </h3>
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr auto",
+            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
             gap: "1rem",
             alignItems: "end",
           }}
         >
-          {/* Search */}
           <div>
             <label
               style={{
@@ -513,6 +544,7 @@ function ShipmentsPage() {
                 marginBottom: "0.5rem",
                 fontWeight: 500,
                 fontSize: "0.875rem",
+                color: "#475569",
               }}
             >
               Search
@@ -527,15 +559,16 @@ function ShipmentsPage() {
               }}
               style={{
                 width: "100%",
-                padding: "0.5rem",
+                padding: "0.625rem",
                 border: "1px solid #cbd5e1",
-                borderRadius: "0.25rem",
+                borderRadius: "0.375rem",
                 fontSize: "0.875rem",
+                background: "white",
+                color: "#1e293b",
               }}
             />
           </div>
 
-          {/* Start Date */}
           <div>
             <label
               style={{
@@ -543,6 +576,7 @@ function ShipmentsPage() {
                 marginBottom: "0.5rem",
                 fontWeight: 500,
                 fontSize: "0.875rem",
+                color: "#475569",
               }}
             >
               Start Date
@@ -556,15 +590,16 @@ function ShipmentsPage() {
               }}
               style={{
                 width: "100%",
-                padding: "0.5rem",
+                padding: "0.625rem",
                 border: "1px solid #cbd5e1",
-                borderRadius: "0.25rem",
+                borderRadius: "0.375rem",
                 fontSize: "0.875rem",
+                background: "white",
+                color: "#1e293b",
               }}
             />
           </div>
 
-          {/* End Date */}
           <div>
             <label
               style={{
@@ -572,6 +607,7 @@ function ShipmentsPage() {
                 marginBottom: "0.5rem",
                 fontWeight: 500,
                 fontSize: "0.875rem",
+                color: "#475569",
               }}
             >
               End Date
@@ -585,15 +621,16 @@ function ShipmentsPage() {
               }}
               style={{
                 width: "100%",
-                padding: "0.5rem",
+                padding: "0.625rem",
                 border: "1px solid #cbd5e1",
-                borderRadius: "0.25rem",
+                borderRadius: "0.375rem",
                 fontSize: "0.875rem",
+                background: "white",
+                color: "#1e293b",
               }}
             />
           </div>
 
-          {/* Warehouse Filter */}
           <div>
             <label
               style={{
@@ -601,6 +638,7 @@ function ShipmentsPage() {
                 marginBottom: "0.5rem",
                 fontWeight: 500,
                 fontSize: "0.875rem",
+                color: "#475569",
               }}
             >
               Warehouse
@@ -613,13 +651,15 @@ function ShipmentsPage() {
               }}
               style={{
                 width: "100%",
-                padding: "0.5rem",
+                padding: "0.625rem",
                 border: "1px solid #cbd5e1",
-                borderRadius: "0.25rem",
+                borderRadius: "0.375rem",
                 fontSize: "0.875rem",
+                background: "white",
+                color: "#1e293b",
               }}
             >
-              <option value="all">All</option>
+              <option value="all">All Warehouses</option>
               {warehouses.map((w) => (
                 <option key={w} value={w}>
                   {w}
@@ -628,7 +668,6 @@ function ShipmentsPage() {
             </select>
           </div>
 
-          {/* Vehicle Filter */}
           <div>
             <label
               style={{
@@ -636,6 +675,7 @@ function ShipmentsPage() {
                 marginBottom: "0.5rem",
                 fontWeight: 500,
                 fontSize: "0.875rem",
+                color: "#475569",
               }}
             >
               Vehicle
@@ -648,13 +688,15 @@ function ShipmentsPage() {
               }}
               style={{
                 width: "100%",
-                padding: "0.5rem",
+                padding: "0.625rem",
                 border: "1px solid #cbd5e1",
-                borderRadius: "0.25rem",
+                borderRadius: "0.375rem",
                 fontSize: "0.875rem",
+                background: "white",
+                color: "#1e293b",
               }}
             >
-              <option value="all">All</option>
+              <option value="all">All Vehicles</option>
               {vehicles.map((v) => (
                 <option key={v} value={v}>
                   {v}
@@ -663,16 +705,15 @@ function ShipmentsPage() {
             </select>
           </div>
 
-          {/* Clear Filters */}
           {hasActiveFilters && (
             <button
               onClick={handleClearFilters}
               style={{
-                padding: "0.5rem 1rem",
+                padding: "0.625rem 1rem",
                 background: "#ef4444",
                 color: "white",
                 border: "none",
-                borderRadius: "0.25rem",
+                borderRadius: "0.375rem",
                 cursor: "pointer",
                 fontSize: "0.875rem",
                 fontWeight: 600,
@@ -697,7 +738,13 @@ function ShipmentsPage() {
         {paginatedShipments.length > 0 ? (
           <>
             <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  minWidth: "600px",
+                }}
+              >
                 <thead>
                   <tr
                     style={{
@@ -711,6 +758,7 @@ function ShipmentsPage() {
                         textAlign: "left",
                         fontWeight: 600,
                         fontSize: "0.875rem",
+                        color: "#475569",
                       }}
                     >
                       Date
@@ -721,6 +769,7 @@ function ShipmentsPage() {
                         textAlign: "left",
                         fontWeight: 600,
                         fontSize: "0.875rem",
+                        color: "#475569",
                       }}
                     >
                       Dealer
@@ -731,6 +780,7 @@ function ShipmentsPage() {
                         textAlign: "left",
                         fontWeight: 600,
                         fontSize: "0.875rem",
+                        color: "#475569",
                       }}
                     >
                       Warehouse
@@ -741,6 +791,7 @@ function ShipmentsPage() {
                         textAlign: "left",
                         fontWeight: 600,
                         fontSize: "0.875rem",
+                        color: "#475569",
                       }}
                     >
                       Vehicle
@@ -751,6 +802,7 @@ function ShipmentsPage() {
                         textAlign: "right",
                         fontWeight: 600,
                         fontSize: "0.875rem",
+                        color: "#475569",
                       }}
                     >
                       Shipped
@@ -761,6 +813,7 @@ function ShipmentsPage() {
                         textAlign: "right",
                         fontWeight: 600,
                         fontSize: "0.875rem",
+                        color: "#475569",
                       }}
                     >
                       Returned
@@ -771,6 +824,7 @@ function ShipmentsPage() {
                         textAlign: "right",
                         fontWeight: 600,
                         fontSize: "0.875rem",
+                        color: "#475569",
                       }}
                     >
                       Damage Rate
@@ -783,17 +837,30 @@ function ShipmentsPage() {
                       key={shipment._id}
                       style={{ borderBottom: "1px solid #e2e8f0" }}
                     >
-                      <td style={{ padding: "1rem", fontSize: "0.875rem" }}>
+                      <td
+                        style={{
+                          padding: "1rem",
+                          fontSize: "0.875rem",
+                          color: "#1e293b",
+                        }}
+                      >
                         {format(new Date(shipment.date), "MMM dd, yyyy")}
                       </td>
-                      <td style={{ padding: "1rem", fontSize: "0.875rem" }}>
+                      <td
+                        style={{
+                          padding: "1rem",
+                          fontSize: "0.875rem",
+                          color: "#1e293b",
+                        }}
+                      >
                         {shipment.dealer_code}
                       </td>
                       <td style={{ padding: "1rem", fontSize: "0.875rem" }}>
                         <span
                           style={{
-                            background: "#f1f5f9",
-                            padding: "0.25rem 0.5rem",
+                            background: "#e0f2fe",
+                            color: "#0369a1",
+                            padding: "0.25rem 0.625rem",
                             borderRadius: "0.25rem",
                             fontSize: "0.75rem",
                             fontWeight: 600,
@@ -802,7 +869,13 @@ function ShipmentsPage() {
                           {shipment.warehouse}
                         </span>
                       </td>
-                      <td style={{ padding: "1rem", fontSize: "0.875rem" }}>
+                      <td
+                        style={{
+                          padding: "1rem",
+                          fontSize: "0.875rem",
+                          color: "#1e293b",
+                        }}
+                      >
                         {shipment.vehicle}
                       </td>
                       <td
@@ -810,6 +883,8 @@ function ShipmentsPage() {
                           padding: "1rem",
                           textAlign: "right",
                           fontSize: "0.875rem",
+                          color: "#1e293b",
+                          fontWeight: 500,
                         }}
                       >
                         {shipment.shipped}
@@ -819,6 +894,7 @@ function ShipmentsPage() {
                           padding: "1rem",
                           textAlign: "right",
                           fontSize: "0.875rem",
+                          color: "#64748b",
                         }}
                       >
                         {shipment.returned ?? "-"}
@@ -831,10 +907,10 @@ function ShipmentsPage() {
                           fontWeight: 600,
                           color: shipment.damage_rate
                             ? shipment.damage_rate > 0.1
-                              ? "#ef4444"
+                              ? "#dc2626"
                               : shipment.damage_rate > 0.05
-                                ? "#f59e0b"
-                                : "#10b981"
+                                ? "#ea580c"
+                                : "#16a34a"
                             : "#64748b",
                         }}
                       >
@@ -848,20 +924,24 @@ function ShipmentsPage() {
               </table>
             </div>
 
-            {/* Pagination */}
             {totalPages > 1 && (
               <div
                 style={{
                   display: "flex",
+                  flexDirection: "row",
                   justifyContent: "space-between",
                   alignItems: "center",
                   padding: "1rem",
                   borderTop: "1px solid #e2e8f0",
+                  flexWrap: "wrap",
+                  gap: "1rem",
                 }}
               >
-                <p style={{ fontSize: "0.875rem", color: "#64748b" }}>
-                  Page {currentPage} of {totalPages} ({filteredShipments.length}{" "}
-                  results)
+                <p
+                  style={{ fontSize: "0.875rem", color: "#64748b", margin: 0 }}
+                >
+                  Page {currentPage} of {totalPages} •{" "}
+                  {filteredShipments.length} results
                 </p>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
                   <button
@@ -872,7 +952,7 @@ function ShipmentsPage() {
                       background: currentPage === 1 ? "#e2e8f0" : "#38bdf8",
                       color: currentPage === 1 ? "#94a3b8" : "white",
                       border: "none",
-                      borderRadius: "0.25rem",
+                      borderRadius: "0.375rem",
                       cursor: currentPage === 1 ? "not-allowed" : "pointer",
                       fontSize: "0.875rem",
                       fontWeight: 600,
@@ -891,7 +971,7 @@ function ShipmentsPage() {
                         currentPage === totalPages ? "#e2e8f0" : "#38bdf8",
                       color: currentPage === totalPages ? "#94a3b8" : "white",
                       border: "none",
-                      borderRadius: "0.25rem",
+                      borderRadius: "0.375rem",
                       cursor:
                         currentPage === totalPages ? "not-allowed" : "pointer",
                       fontSize: "0.875rem",
@@ -911,7 +991,7 @@ function ShipmentsPage() {
                 width: "64px",
                 height: "64px",
                 margin: "0 auto 1rem",
-                opacity: 0.3,
+                color: "#cbd5e1",
               }}
               fill="none"
               stroke="currentColor"
@@ -935,7 +1015,7 @@ function ShipmentsPage() {
                 ? "No shipments match your filters"
                 : "No shipments found"}
             </p>
-            {hasActiveFilters && (
+            {hasActiveFilters ? (
               <button
                 onClick={handleClearFilters}
                 style={{
@@ -951,6 +1031,23 @@ function ShipmentsPage() {
                 }}
               >
                 Clear Filters
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowForm(true)}
+                style={{
+                  marginTop: "1rem",
+                  background: "#38bdf8",
+                  color: "white",
+                  border: "none",
+                  padding: "0.75rem 1.5rem",
+                  borderRadius: "0.375rem",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  fontSize: "0.875rem",
+                }}
+              >
+                Create Your First Shipment
               </button>
             )}
           </div>

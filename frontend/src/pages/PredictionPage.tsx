@@ -1,8 +1,8 @@
 import { useState } from "react";
+import type { AxiosError } from "axios";
 import type { FormEvent, ChangeEvent } from "react";
 import { useMutation } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import type { AxiosError } from "axios";
 import { createPrediction } from "../api/predictions";
 import type {
   PredictionRequest,
@@ -35,7 +35,7 @@ function PredictionPage() {
       toast.success("Prediction generated successfully!");
     },
     onError: (error: AxiosError<{ detail?: string }>) => {
-      toast.error(error.response?.data?.detail ?? "Prediction failed");
+      toast.error(error.response?.data?.detail || "Prediction failed");
     },
   });
 
@@ -53,7 +53,6 @@ function PredictionPage() {
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // Validation
     if (form.dealer_code < 1 || form.dealer_code > 100) {
       toast.error("Dealer code must be between 1 and 100");
       return;
@@ -73,13 +72,13 @@ function PredictionPage() {
   const getRiskColor = (category: string) => {
     switch (category) {
       case "Low":
-        return "#10b981";
+        return "#16a34a";
       case "Medium":
-        return "#f59e0b";
+        return "#ea580c";
       case "High":
-        return "#f97316";
+        return "#dc2626";
       case "Critical":
-        return "#ef4444";
+        return "#991b1b";
       default:
         return "#64748b";
     }
@@ -88,32 +87,44 @@ function PredictionPage() {
   const getPriorityColor = (priority: string) => {
     switch (priority.toUpperCase()) {
       case "LOW":
-        return "#10b981";
+        return "#16a34a";
       case "MEDIUM":
-        return "#f59e0b";
+        return "#ea580c";
       case "HIGH":
-        return "#f97316";
+        return "#dc2626";
       case "CRITICAL":
-        return "#ef4444";
+        return "#991b1b";
       default:
         return "#64748b";
     }
   };
 
   return (
-    <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-      <h1 style={{ marginBottom: "2rem", fontSize: "2rem", color: "#1e293b" }}>
+    <div style={{ padding: "1rem", maxWidth: "1400px", margin: "0 auto" }}>
+      <h1
+        style={{
+          marginBottom: "1.5rem",
+          fontSize: "1.75rem",
+          color: "#1e293b",
+          fontWeight: 600,
+        }}
+      >
         Paint Damage Prediction
       </h1>
 
       <div
-        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2rem" }}
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "repeat(auto-fit, minmax(min(100%, 450px), 1fr))",
+          gap: "1.5rem",
+        }}
       >
         {/* Form Section */}
         <div
           style={{
             background: "white",
-            padding: "2rem",
+            padding: "1.5rem",
             borderRadius: "0.5rem",
             boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
             height: "fit-content",
@@ -121,9 +132,10 @@ function PredictionPage() {
         >
           <h2
             style={{
-              marginBottom: "1.5rem",
-              fontSize: "1.25rem",
+              marginBottom: "1.25rem",
+              fontSize: "1.125rem",
               color: "#1e293b",
+              fontWeight: 600,
             }}
           >
             Shipment Details
@@ -131,7 +143,7 @@ function PredictionPage() {
 
           <form
             onSubmit={handleSubmit}
-            style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}
+            style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
           >
             <div>
               <label
@@ -140,6 +152,7 @@ function PredictionPage() {
                   marginBottom: "0.5rem",
                   fontWeight: 500,
                   fontSize: "0.875rem",
+                  color: "#475569",
                 }}
               >
                 Date & Time
@@ -160,6 +173,8 @@ function PredictionPage() {
                   border: "1px solid #cbd5e1",
                   borderRadius: "0.375rem",
                   fontSize: "0.875rem",
+                  background: "white",
+                  color: "#1e293b",
                 }}
               />
             </div>
@@ -171,6 +186,7 @@ function PredictionPage() {
                   marginBottom: "0.5rem",
                   fontWeight: 500,
                   fontSize: "0.875rem",
+                  color: "#475569",
                 }}
               >
                 Dealer Code (1-100)
@@ -189,6 +205,8 @@ function PredictionPage() {
                   border: "1px solid #cbd5e1",
                   borderRadius: "0.375rem",
                   fontSize: "0.875rem",
+                  background: "white",
+                  color: "#1e293b",
                 }}
               />
             </div>
@@ -200,6 +218,7 @@ function PredictionPage() {
                   marginBottom: "0.5rem",
                   fontWeight: 500,
                   fontSize: "0.875rem",
+                  color: "#475569",
                 }}
               >
                 Warehouse
@@ -214,6 +233,8 @@ function PredictionPage() {
                   border: "1px solid #cbd5e1",
                   borderRadius: "0.375rem",
                   fontSize: "0.875rem",
+                  background: "white",
+                  color: "#1e293b",
                 }}
               >
                 {warehouses.map((w) => (
@@ -231,6 +252,7 @@ function PredictionPage() {
                   marginBottom: "0.5rem",
                   fontWeight: 500,
                   fontSize: "0.875rem",
+                  color: "#475569",
                 }}
               >
                 Product Code (9 digits)
@@ -250,6 +272,8 @@ function PredictionPage() {
                   borderRadius: "0.375rem",
                   fontSize: "0.875rem",
                   fontFamily: "monospace",
+                  background: "white",
+                  color: "#1e293b",
                 }}
               />
             </div>
@@ -261,6 +285,7 @@ function PredictionPage() {
                   marginBottom: "0.5rem",
                   fontWeight: 500,
                   fontSize: "0.875rem",
+                  color: "#475569",
                 }}
               >
                 Vehicle Type
@@ -275,6 +300,8 @@ function PredictionPage() {
                   border: "1px solid #cbd5e1",
                   borderRadius: "0.375rem",
                   fontSize: "0.875rem",
+                  background: "white",
+                  color: "#1e293b",
                 }}
               >
                 {vehicles.map((v) => (
@@ -292,6 +319,7 @@ function PredictionPage() {
                   marginBottom: "0.5rem",
                   fontWeight: 500,
                   fontSize: "0.875rem",
+                  color: "#475569",
                 }}
               >
                 Shipped Quantity (tins)
@@ -309,6 +337,8 @@ function PredictionPage() {
                   border: "1px solid #cbd5e1",
                   borderRadius: "0.375rem",
                   fontSize: "0.875rem",
+                  background: "white",
+                  color: "#1e293b",
                 }}
               />
             </div>
@@ -336,19 +366,19 @@ function PredictionPage() {
 
         {/* Results Section */}
         <div>
-          {result && (
+          {result ? (
             <div
               style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: "1.5rem",
+                gap: "1.25rem",
               }}
             >
-              {/* Risk Overview Card */}
+              {/* Risk Overview */}
               <div
                 style={{
                   background: "white",
-                  padding: "2rem",
+                  padding: "1.5rem",
                   borderRadius: "0.5rem",
                   boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
                   borderLeft: `6px solid ${getRiskColor(result.risk_category)}`,
@@ -359,6 +389,8 @@ function PredictionPage() {
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
+                    flexWrap: "wrap",
+                    gap: "1rem",
                   }}
                 >
                   <div>
@@ -373,7 +405,7 @@ function PredictionPage() {
                     </p>
                     <h2
                       style={{
-                        fontSize: "2.5rem",
+                        fontSize: "2.25rem",
                         fontWeight: "bold",
                         color: getRiskColor(result.risk_category),
                         margin: 0,
@@ -397,6 +429,7 @@ function PredictionPage() {
                         fontSize: "1.5rem",
                         fontWeight: "bold",
                         color: "#1e293b",
+                        margin: 0,
                       }}
                     >
                       {(result.confidence_score * 100).toFixed(1)}%
@@ -409,32 +442,35 @@ function PredictionPage() {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
                   gap: "1rem",
                 }}
               >
                 <div
                   style={{
                     background: "white",
-                    padding: "1.5rem",
+                    padding: "1.25rem",
                     borderRadius: "0.5rem",
                     boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
                   }}
                 >
                   <p
                     style={{
-                      fontSize: "0.875rem",
+                      fontSize: "0.75rem",
                       color: "#64748b",
                       marginBottom: "0.5rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
                     }}
                   >
                     Damage Rate
                   </p>
                   <p
                     style={{
-                      fontSize: "1.75rem",
+                      fontSize: "1.5rem",
                       fontWeight: "bold",
                       color: "#1e293b",
+                      margin: 0,
                     }}
                   >
                     {(result.predicted_damage_rate * 100).toFixed(2)}%
@@ -444,25 +480,28 @@ function PredictionPage() {
                 <div
                   style={{
                     background: "white",
-                    padding: "1.5rem",
+                    padding: "1.25rem",
                     borderRadius: "0.5rem",
                     boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
                   }}
                 >
                   <p
                     style={{
-                      fontSize: "0.875rem",
+                      fontSize: "0.75rem",
                       color: "#64748b",
                       marginBottom: "0.5rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
                     }}
                   >
                     Predicted Returns
                   </p>
                   <p
                     style={{
-                      fontSize: "1.75rem",
+                      fontSize: "1.5rem",
                       fontWeight: "bold",
                       color: "#1e293b",
+                      margin: 0,
                     }}
                   >
                     {result.predicted_returned} tins
@@ -472,25 +511,28 @@ function PredictionPage() {
                 <div
                   style={{
                     background: "white",
-                    padding: "1.5rem",
+                    padding: "1.25rem",
                     borderRadius: "0.5rem",
                     boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
                   }}
                 >
                   <p
                     style={{
-                      fontSize: "0.875rem",
+                      fontSize: "0.75rem",
                       color: "#64748b",
                       marginBottom: "0.5rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
                     }}
                   >
                     Estimated Loss
                   </p>
                   <p
                     style={{
-                      fontSize: "1.75rem",
+                      fontSize: "1.5rem",
                       fontWeight: "bold",
-                      color: "#ef4444",
+                      color: "#dc2626",
+                      margin: 0,
                     }}
                   >
                     ₹{result.estimated_loss.toFixed(0)}
@@ -500,25 +542,28 @@ function PredictionPage() {
                 <div
                   style={{
                     background: "white",
-                    padding: "1.5rem",
+                    padding: "1.25rem",
                     borderRadius: "0.5rem",
                     boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
                   }}
                 >
                   <p
                     style={{
-                      fontSize: "0.875rem",
+                      fontSize: "0.75rem",
                       color: "#64748b",
                       marginBottom: "0.5rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
                     }}
                   >
                     Loading Ratio
                   </p>
                   <p
                     style={{
-                      fontSize: "1.75rem",
+                      fontSize: "1.5rem",
                       fontWeight: "bold",
-                      color: result.is_overloaded ? "#ef4444" : "#10b981",
+                      color: result.is_overloaded ? "#dc2626" : "#16a34a",
+                      margin: 0,
                     }}
                   >
                     {((result.loading_ratio || 0) * 100).toFixed(0)}%
@@ -540,6 +585,7 @@ function PredictionPage() {
                     fontSize: "1.125rem",
                     marginBottom: "1rem",
                     color: "#1e293b",
+                    fontWeight: 600,
                   }}
                 >
                   Recommendations
@@ -567,6 +613,8 @@ function PredictionPage() {
                           justifyContent: "space-between",
                           alignItems: "start",
                           marginBottom: "0.5rem",
+                          flexWrap: "wrap",
+                          gap: "0.5rem",
                         }}
                       >
                         <span
@@ -575,6 +623,7 @@ function PredictionPage() {
                             fontWeight: 600,
                             color: getPriorityColor(rec.priority),
                             textTransform: "uppercase",
+                            letterSpacing: "0.05em",
                           }}
                         >
                           {rec.priority}
@@ -598,6 +647,7 @@ function PredictionPage() {
                           color: "#1e293b",
                           marginBottom: "0.5rem",
                           lineHeight: 1.5,
+                          margin: "0.5rem 0",
                         }}
                       >
                         {rec.message}
@@ -607,6 +657,7 @@ function PredictionPage() {
                           fontSize: "0.75rem",
                           color: "#64748b",
                           fontStyle: "italic",
+                          margin: 0,
                         }}
                       >
                         Impact: {rec.impact}
@@ -616,7 +667,7 @@ function PredictionPage() {
                 </div>
               </div>
 
-              {/* Additional Info */}
+              {/* Historical Context */}
               <div
                 style={{
                   background: "white",
@@ -630,6 +681,7 @@ function PredictionPage() {
                     fontSize: "1.125rem",
                     marginBottom: "1rem",
                     color: "#1e293b",
+                    fontWeight: 600,
                   }}
                 >
                   Historical Context
@@ -637,7 +689,7 @@ function PredictionPage() {
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
                     gap: "1rem",
                   }}
                 >
@@ -647,6 +699,8 @@ function PredictionPage() {
                         fontSize: "0.75rem",
                         color: "#64748b",
                         marginBottom: "0.25rem",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
                       }}
                     >
                       Dealer Risk Level
@@ -656,6 +710,7 @@ function PredictionPage() {
                         fontSize: "0.875rem",
                         fontWeight: 600,
                         color: "#1e293b",
+                        margin: 0,
                       }}
                     >
                       {result.dealer_historical_risk || "N/A"}
@@ -667,6 +722,8 @@ function PredictionPage() {
                         fontSize: "0.75rem",
                         color: "#64748b",
                         marginBottom: "0.25rem",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
                       }}
                     >
                       Warehouse Performance
@@ -676,6 +733,7 @@ function PredictionPage() {
                         fontSize: "0.875rem",
                         fontWeight: 600,
                         color: "#1e293b",
+                        margin: 0,
                       }}
                     >
                       {result.warehouse_historical_risk || "N/A"}
@@ -684,9 +742,7 @@ function PredictionPage() {
                 </div>
               </div>
             </div>
-          )}
-
-          {!result && (
+          ) : (
             <div
               style={{
                 background: "white",
@@ -701,7 +757,7 @@ function PredictionPage() {
                   width: "64px",
                   height: "64px",
                   margin: "0 auto 1rem",
-                  opacity: 0.3,
+                  color: "#cbd5e1",
                 }}
                 fill="none"
                 stroke="currentColor"
@@ -714,7 +770,7 @@ function PredictionPage() {
                   d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
                 />
               </svg>
-              <p style={{ color: "#64748b", fontSize: "1rem" }}>
+              <p style={{ color: "#64748b", fontSize: "1rem", margin: 0 }}>
                 Enter shipment details and click "Generate Prediction" to see
                 results
               </p>
