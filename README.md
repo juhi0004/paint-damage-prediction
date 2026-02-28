@@ -1,4 +1,4 @@
-# 🚛🎨 Paint Damage Predictor
+# 🚛🎨 Paint Damage Prediction
 
 A damage prediction system for automotive paint shipments. Uses an XGBoost machine learning model to predict damage rates, estimate financial losses, and provide actionable recommendations.
 
