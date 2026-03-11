@@ -7,8 +7,6 @@ import DashboardPage from "./pages/DashboardPage";
 import PredictionPage from "./pages/PredictionPage";
 import ShipmentsPage from "./pages/ShipmentsPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
-import BatchPrediction from "./components/BatchPrediction";
-import AlertsPage from "./pages/AlertsPage";
 import ComparePage from "./pages/ComparePage";
 
 function App() {
@@ -40,18 +38,7 @@ function App() {
             </PrivateRoute>
           }
         />
-        <Route
-          path="/batch-predictions"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <ErrorBoundary>
-                  <BatchPrediction />
-                </ErrorBoundary>
-              </Layout>
-            </PrivateRoute>
-          }
-        />
+
         <Route
           path="/shipments"
           element={
@@ -76,18 +63,7 @@ function App() {
             </PrivateRoute>
           }
         />
-        <Route
-          path="/alerts"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <ErrorBoundary>
-                  <AlertsPage />
-                </ErrorBoundary>
-              </Layout>
-            </PrivateRoute>
-          }
-        />
+
         <Route
           path="/compare"
           element={

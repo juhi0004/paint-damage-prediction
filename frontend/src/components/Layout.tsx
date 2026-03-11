@@ -72,7 +72,7 @@ function Layout({ children }: LayoutProps) {
               <rect width="32" height="32" rx="8" fill="#38bdf8" />
               <path d="M16 8L8 14v10h6v-6h4v6h6V14l-8-6z" fill="white" />
             </svg>
-            Paint Predictor
+            Paint Prediction
           </Link>
 
           <div
@@ -92,21 +92,14 @@ function Layout({ children }: LayoutProps) {
             >
               Predictions
             </Link>
-            <Link
-              to="/batch-predictions"
-              style={navLinkStyle(isActive("/batch-predictions"))}
-            >
-              Batch Upload
-            </Link>
+
             <Link to="/shipments" style={navLinkStyle(isActive("/shipments"))}>
               Shipments
             </Link>
             <Link to="/analytics" style={navLinkStyle(isActive("/analytics"))}>
               Analytics
             </Link>
-            <Link to="/alerts" style={navLinkStyle(isActive("/alerts"))}>
-              Alerts
-            </Link>
+
             <Link to="/compare" style={navLinkStyle(isActive("/compare"))}>
               Compare
             </Link>

@@ -1,8 +1,5 @@
 import { useState } from "react";
-import type { AxiosError } from "axios";
-import type { FormEvent, ChangeEvent } from "react";
 import { useMutation } from "@tanstack/react-query";
-import toast from "react-hot-toast";
 import { createPrediction } from "../api/predictions";
 import type {
   PredictionRequest,
@@ -10,22 +7,18 @@ import type {
   VehicleType,
   Warehouse,
 } from "../types/prediction";
-
-const defaultPayload: PredictionRequest = {
-  date: new Date().toISOString(),
-  dealer_code: 17,
-  warehouse: "NAG",
-  product_code: "321123678",
-  vehicle: "Minitruck",
-  shipped: 25,
-  model: "xgboost",
-};
-
-const warehouses: Warehouse[] = ["NAG", "MUM", "GOA", "KOL", "PUN"];
-const vehicles: VehicleType[] = ["Autorickshaw", "Vikram", "Minitruck"];
+import toast from "react-hot-toast";
 
 function PredictionPage() {
-  const [form, setForm] = useState<PredictionRequest>(defaultPayload);
+  const [form, setForm] = useState<Omit<PredictionRequest, "model">>({
+    date: new Date().toISOString().slice(0, 16),
+    dealer_code: 17,
+    warehouse: "NAG",
+    product_code: "321123678",
+    vehicle: "Minitruck",
+    shipped: 25,
+  });
+
   const [result, setResult] = useState<PredictionResponse | null>(null);
 
   const mutation = useMutation({
@@ -34,407 +27,430 @@ function PredictionPage() {
       setResult(data);
       toast.success("Prediction generated successfully!");
     },
-    onError: (error: AxiosError<{ detail?: string }>) => {
-      toast.error(error.response?.data?.detail || "Prediction failed");
+    onError: (error: unknown) => {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("Prediction failed");
+      }
+
+      console.error("Prediction error:", error);
     },
   });
 
-  const handleChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
-  ) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({
-      ...prev,
-      [name]:
-        name === "dealer_code" || name === "shipped" ? Number(value) : value,
-    }));
-  };
-
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validate inputs
     if (form.dealer_code < 1 || form.dealer_code > 100) {
       toast.error("Dealer code must be between 1 and 100");
       return;
     }
-    if (form.product_code.length !== 9 || !/^\d+$/.test(form.product_code)) {
+
+    if (form.product_code.length !== 9) {
       toast.error("Product code must be exactly 9 digits");
       return;
     }
-    if (form.shipped < 1) {
-      toast.error("Shipped quantity must be at least 1");
+
+    if (form.shipped <= 0) {
+      toast.error("Shipped quantity must be greater than 0");
       return;
     }
 
-    mutation.mutate(form);
+    const requestData: PredictionRequest = {
+      ...form,
+      date: new Date(form.date).toISOString(),
+      model: "xgboost",
+    };
+
+    mutation.mutate(requestData);
   };
 
   const getRiskColor = (category: string) => {
     switch (category) {
       case "Low":
-        return "#16a34a";
+        return { bg: "#ecfdf5", border: "#10b981", text: "#065f46" };
       case "Medium":
-        return "#ea580c";
+        return { bg: "#fef3c7", border: "#f59e0b", text: "#92400e" };
       case "High":
-        return "#dc2626";
+        return { bg: "#fee2e2", border: "#ef4444", text: "#991b1b" };
       case "Critical":
-        return "#991b1b";
+        return { bg: "#fecaca", border: "#dc2626", text: "#7f1d1d" };
       default:
-        return "#64748b";
+        return { bg: "#f3f4f6", border: "#9ca3af", text: "#374151" };
     }
   };
 
   const getPriorityColor = (priority: string) => {
-    switch (priority.toUpperCase()) {
-      case "LOW":
-        return "#16a34a";
-      case "MEDIUM":
-        return "#ea580c";
-      case "HIGH":
-        return "#dc2626";
+    switch (priority) {
       case "CRITICAL":
-        return "#991b1b";
+        return { bg: "#fee2e2", border: "#dc2626", text: "#991b1b" };
+      case "HIGH":
+        return { bg: "#fed7aa", border: "#ea580c", text: "#9a3412" };
+      case "MEDIUM":
+        return { bg: "#fef3c7", border: "#f59e0b", text: "#92400e" };
+      case "LOW":
+        return { bg: "#dbeafe", border: "#3b82f6", text: "#1e40af" };
       default:
-        return "#64748b";
+        return { bg: "#f3f4f6", border: "#9ca3af", text: "#374151" };
     }
   };
 
   return (
-    <div style={{ padding: "1rem", maxWidth: "1400px", margin: "0 auto" }}>
-      <h1
-        style={{
-          marginBottom: "1.5rem",
-          fontSize: "1.75rem",
-          color: "#1e293b",
-          fontWeight: 600,
-        }}
-      >
-        Paint Damage Prediction
-      </h1>
+    <div style={{ padding: "1rem" }}>
+      <div style={{ marginBottom: "2rem" }}>
+        <h1
+          style={{
+            fontSize: "1.75rem",
+            color: "var(--text-primary)",
+            marginBottom: "0.5rem",
+            fontWeight: 600,
+          }}
+        >
+          Paint Damage Prediction
+        </h1>
+        <p style={{ fontSize: "0.875rem", color: "var(--text-secondary)" }}>
+          Predict damage rates and get actionable recommendations for your
+          shipment
+        </p>
+      </div>
 
       <div
         style={{
           display: "grid",
-          gridTemplateColumns:
-            "repeat(auto-fit, minmax(min(100%, 450px), 1fr))",
-          gap: "1.5rem",
+          gridTemplateColumns: "1fr",
+          gap: "2rem",
         }}
       >
         {/* Form Section */}
         <div
           style={{
-            background: "white",
-            padding: "1.5rem",
-            borderRadius: "0.5rem",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-            height: "fit-content",
+            background: "var(--bg-secondary)",
+            padding: "2rem",
+            borderRadius: "0.75rem",
+            boxShadow: "0 1px 3px var(--shadow)",
+            border: "1px solid var(--border-color-light)",
           }}
         >
           <h2
             style={{
-              marginBottom: "1.25rem",
-              fontSize: "1.125rem",
-              color: "#1e293b",
+              fontSize: "1.25rem",
+              marginBottom: "1.5rem",
+              color: "var(--text-primary)",
               fontWeight: 600,
             }}
           >
             Shipment Details
           </h2>
 
-          <form
-            onSubmit={handleSubmit}
-            style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
-          >
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "0.5rem",
-                  fontWeight: 500,
-                  fontSize: "0.875rem",
-                  color: "#475569",
-                }}
-              >
-                Date & Time
-              </label>
-              <input
-                type="datetime-local"
-                name="date"
-                value={form.date.slice(0, 16)}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    date: new Date(e.target.value).toISOString(),
-                  }))
-                }
-                style={{
-                  width: "100%",
-                  padding: "0.625rem",
-                  border: "1px solid #cbd5e1",
-                  borderRadius: "0.375rem",
-                  fontSize: "0.875rem",
-                  background: "white",
-                  color: "#1e293b",
-                }}
-              />
-            </div>
+          <form onSubmit={handleSubmit}>
+            <div style={{ display: "grid", gap: "1.25rem" }}>
+              {/* Date & Time */}
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "0.875rem",
+                    fontWeight: 600,
+                    marginBottom: "0.5rem",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  Date & Time
+                </label>
+                <input
+                  type="datetime-local"
+                  value={form.date}
+                  onChange={(e) => setForm({ ...form, date: e.target.value })}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "0.75rem",
+                    border: "1px solid var(--border-color)",
+                    borderRadius: "0.375rem",
+                    fontSize: "0.875rem",
+                    background: "var(--bg-primary)",
+                    color: "var(--text-primary)",
+                  }}
+                />
+              </div>
 
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "0.5rem",
-                  fontWeight: 500,
-                  fontSize: "0.875rem",
-                  color: "#475569",
-                }}
-              >
-                Dealer Code (1-100)
-              </label>
-              <input
-                type="number"
-                name="dealer_code"
-                value={form.dealer_code}
-                onChange={handleChange}
-                min={1}
-                max={100}
-                required
-                style={{
-                  width: "100%",
-                  padding: "0.625rem",
-                  border: "1px solid #cbd5e1",
-                  borderRadius: "0.375rem",
-                  fontSize: "0.875rem",
-                  background: "white",
-                  color: "#1e293b",
-                }}
-              />
-            </div>
+              {/* Dealer Code */}
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "0.875rem",
+                    fontWeight: 600,
+                    marginBottom: "0.5rem",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  Dealer Code (1-100)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={form.dealer_code}
+                  onChange={(e) =>
+                    setForm({ ...form, dealer_code: parseInt(e.target.value) })
+                  }
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "0.75rem",
+                    border: "1px solid var(--border-color)",
+                    borderRadius: "0.375rem",
+                    fontSize: "0.875rem",
+                    background: "var(--bg-primary)",
+                    color: "var(--text-primary)",
+                  }}
+                />
+              </div>
 
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "0.5rem",
-                  fontWeight: 500,
-                  fontSize: "0.875rem",
-                  color: "#475569",
-                }}
-              >
-                Warehouse
-              </label>
-              <select
-                name="warehouse"
-                value={form.warehouse}
-                onChange={handleChange}
-                style={{
-                  width: "100%",
-                  padding: "0.625rem",
-                  border: "1px solid #cbd5e1",
-                  borderRadius: "0.375rem",
-                  fontSize: "0.875rem",
-                  background: "white",
-                  color: "#1e293b",
-                }}
-              >
-                {warehouses.map((w) => (
-                  <option key={w} value={w}>
-                    {w}
+              {/* Warehouse */}
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "0.875rem",
+                    fontWeight: 600,
+                    marginBottom: "0.5rem",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  Warehouse
+                </label>
+                <select
+                  value={form.warehouse}
+                  onChange={(e) =>
+                    setForm({ ...form, warehouse: e.target.value as Warehouse })
+                  }
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "0.75rem",
+                    border: "1px solid var(--border-color)",
+                    borderRadius: "0.375rem",
+                    fontSize: "0.875rem",
+                    background: "var(--bg-primary)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  <option value="NAG">NAG - Nagpur</option>
+                  <option value="MUM">MUM - Mumbai</option>
+                  <option value="GOA">GOA - Goa</option>
+                  <option value="KOL">KOL - Kolkata</option>
+                  <option value="PUN">PUN - Pune</option>
+                </select>
+              </div>
+
+              {/* Product Code */}
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "0.875rem",
+                    fontWeight: 600,
+                    marginBottom: "0.5rem",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  Product Code (9 digits)
+                </label>
+                <input
+                  type="text"
+                  pattern="[0-9]{9}"
+                  maxLength={9}
+                  value={form.product_code}
+                  onChange={(e) =>
+                    setForm({ ...form, product_code: e.target.value })
+                  }
+                  placeholder="321123678"
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "0.75rem",
+                    border: "1px solid var(--border-color)",
+                    borderRadius: "0.375rem",
+                    fontSize: "0.875rem",
+                    background: "var(--bg-primary)",
+                    color: "var(--text-primary)",
+                  }}
+                />
+              </div>
+
+              {/* Vehicle Type */}
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "0.875rem",
+                    fontWeight: 600,
+                    marginBottom: "0.5rem",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  Vehicle Type
+                </label>
+                <select
+                  value={form.vehicle}
+                  onChange={(e) =>
+                    setForm({ ...form, vehicle: e.target.value as VehicleType })
+                  }
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "0.75rem",
+                    border: "1px solid var(--border-color)",
+                    borderRadius: "0.375rem",
+                    fontSize: "0.875rem",
+                    background: "var(--bg-primary)",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  <option value="Minitruck">Minitruck (Capacity: 30)</option>
+                  <option value="Vikram">Vikram (Capacity: 20)</option>
+                  <option value="Autorickshaw">
+                    Autorickshaw (Capacity: 15)
                   </option>
-                ))}
-              </select>
-            </div>
+                </select>
+              </div>
 
-            <div>
-              <label
+              {/* Shipped Quantity */}
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "0.875rem",
+                    fontWeight: 600,
+                    marginBottom: "0.5rem",
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  Shipped Quantity (tins)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={form.shipped}
+                  onChange={(e) =>
+                    setForm({ ...form, shipped: parseInt(e.target.value) })
+                  }
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "0.75rem",
+                    border: "1px solid var(--border-color)",
+                    borderRadius: "0.375rem",
+                    fontSize: "0.875rem",
+                    background: "var(--bg-primary)",
+                    color: "var(--text-primary)",
+                  }}
+                />
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={mutation.isPending}
                 style={{
-                  display: "block",
-                  marginBottom: "0.5rem",
-                  fontWeight: 500,
-                  fontSize: "0.875rem",
-                  color: "#475569",
-                }}
-              >
-                Product Code (9 digits)
-              </label>
-              <input
-                type="text"
-                name="product_code"
-                value={form.product_code}
-                onChange={handleChange}
-                maxLength={9}
-                pattern="\d{9}"
-                required
-                style={{
-                  width: "100%",
-                  padding: "0.625rem",
-                  border: "1px solid #cbd5e1",
+                  padding: "0.875rem",
+                  background: mutation.isPending ? "#94a3b8" : "#38bdf8",
+                  color: "white",
+                  border: "none",
                   borderRadius: "0.375rem",
-                  fontSize: "0.875rem",
-                  fontFamily: "monospace",
-                  background: "white",
-                  color: "#1e293b",
-                }}
-              />
-            </div>
-
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "0.5rem",
-                  fontWeight: 500,
-                  fontSize: "0.875rem",
-                  color: "#475569",
+                  fontSize: "1rem",
+                  fontWeight: 600,
+                  cursor: mutation.isPending ? "not-allowed" : "pointer",
+                  transition: "all 0.2s",
+                  marginTop: "0.5rem",
                 }}
               >
-                Vehicle Type
-              </label>
-              <select
-                name="vehicle"
-                value={form.vehicle}
-                onChange={handleChange}
-                style={{
-                  width: "100%",
-                  padding: "0.625rem",
-                  border: "1px solid #cbd5e1",
-                  borderRadius: "0.375rem",
-                  fontSize: "0.875rem",
-                  background: "white",
-                  color: "#1e293b",
-                }}
-              >
-                {vehicles.map((v) => (
-                  <option key={v} value={v}>
-                    {v}
-                  </option>
-                ))}
-              </select>
+                {mutation.isPending ? "Generating..." : "Generate Prediction"}
+              </button>
             </div>
-
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "0.5rem",
-                  fontWeight: 500,
-                  fontSize: "0.875rem",
-                  color: "#475569",
-                }}
-              >
-                Shipped Quantity (tins)
-              </label>
-              <input
-                type="number"
-                name="shipped"
-                value={form.shipped}
-                onChange={handleChange}
-                min={1}
-                required
-                style={{
-                  width: "100%",
-                  padding: "0.625rem",
-                  border: "1px solid #cbd5e1",
-                  borderRadius: "0.375rem",
-                  fontSize: "0.875rem",
-                  background: "white",
-                  color: "#1e293b",
-                }}
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={mutation.isPending}
-              style={{
-                width: "100%",
-                padding: "0.75rem",
-                background: mutation.isPending ? "#94a3b8" : "#38bdf8",
-                color: "white",
-                border: "none",
-                borderRadius: "0.375rem",
-                fontSize: "1rem",
-                fontWeight: 600,
-                cursor: mutation.isPending ? "not-allowed" : "pointer",
-                transition: "background 0.2s",
-              }}
-            >
-              {mutation.isPending ? "Analyzing..." : "Generate Prediction"}
-            </button>
           </form>
         </div>
 
         {/* Results Section */}
-        <div>
-          {result ? (
+        {result && (
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "2rem" }}
+          >
+            {/* Risk Level Card */}
             <div
               style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "1.25rem",
+                background: "var(--bg-secondary)",
+                padding: "2rem",
+                borderRadius: "0.75rem",
+                boxShadow: "0 1px 3px var(--shadow)",
+                border: "1px solid var(--border-color-light)",
               }}
             >
-              {/* Risk Overview */}
               <div
                 style={{
-                  background: "white",
-                  padding: "1.5rem",
-                  borderRadius: "0.5rem",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                  borderLeft: `6px solid ${getRiskColor(result.risk_category)}`,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "start",
+                  marginBottom: "2rem",
+                  flexWrap: "wrap",
+                  gap: "1rem",
                 }}
               >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    flexWrap: "wrap",
-                    gap: "1rem",
-                  }}
-                >
-                  <div>
-                    <p
-                      style={{
-                        fontSize: "0.875rem",
-                        color: "#64748b",
-                        marginBottom: "0.5rem",
-                      }}
-                    >
-                      Risk Level
-                    </p>
-                    <h2
-                      style={{
-                        fontSize: "2.25rem",
-                        fontWeight: "bold",
-                        color: getRiskColor(result.risk_category),
-                        margin: 0,
-                      }}
-                    >
-                      {result.risk_category}
-                    </h2>
+                <div style={{ flex: 1 }}>
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      color: "var(--text-secondary)",
+                      marginBottom: "0.5rem",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Risk Level
+                  </p>
+                  <div
+                    style={{
+                      display: "inline-block",
+                      padding: "0.75rem 1.5rem",
+                      borderRadius: "0.5rem",
+                      fontSize: "1.5rem",
+                      fontWeight: 700,
+                      ...getRiskColor(result.risk_category),
+                      border: `3px solid ${getRiskColor(result.risk_category).border}`,
+                      background: getRiskColor(result.risk_category).bg,
+                      color: getRiskColor(result.risk_category).text,
+                    }}
+                  >
+                    {result.risk_category}
                   </div>
-                  <div style={{ textAlign: "right" }}>
-                    <p
-                      style={{
-                        fontSize: "0.875rem",
-                        color: "#64748b",
-                        marginBottom: "0.5rem",
-                      }}
-                    >
-                      Confidence
-                    </p>
-                    <p
-                      style={{
-                        fontSize: "1.5rem",
-                        fontWeight: "bold",
-                        color: "#1e293b",
-                        margin: 0,
-                      }}
-                    >
-                      {(result.confidence_score * 100).toFixed(1)}%
-                    </p>
-                  </div>
+                </div>
+
+                <div style={{ textAlign: "right" }}>
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      color: "var(--text-secondary)",
+                      marginBottom: "0.5rem",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {" "}
+                    {/*Confidence score removed for now 
+                    Confidence */}
+                  </p>
+                  {/*
+                  <p
+                    style={{
+                      fontSize: "2rem",
+                      fontWeight: "bold",
+                      color: "var(--text-primary)",
+                      margin: 0,
+                    }}
+                  >
+                    {(result.confidence_score * 100).toFixed(1)}%
+                  </p> */}
                 </div>
               </div>
 
@@ -448,119 +464,155 @@ function PredictionPage() {
               >
                 <div
                   style={{
-                    background: "white",
+                    background: "var(--bg-primary)",
                     padding: "1.25rem",
                     borderRadius: "0.5rem",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                    border: "1px solid var(--border-color-light)",
                   }}
                 >
                   <p
                     style={{
                       fontSize: "0.75rem",
-                      color: "#64748b",
+                      color: "var(--text-secondary)",
                       marginBottom: "0.5rem",
                       textTransform: "uppercase",
                       letterSpacing: "0.05em",
+                      fontWeight: 600,
                     }}
                   >
                     Damage Rate
                   </p>
                   <p
                     style={{
-                      fontSize: "1.5rem",
+                      fontSize: "1.75rem",
                       fontWeight: "bold",
-                      color: "#1e293b",
+                      color:
+                        result.predicted_damage_rate > 0.1
+                          ? "#dc2626"
+                          : result.predicted_damage_rate > 0.05
+                            ? "#ea580c"
+                            : "#16a34a",
                       margin: 0,
                     }}
                   >
                     {(result.predicted_damage_rate * 100).toFixed(2)}%
                   </p>
+                  <p
+                    style={{
+                      fontSize: "0.7rem",
+                      color: "var(--text-tertiary)",
+                      marginTop: "0.25rem",
+                    }}
+                  >
+                    of {form.shipped} tins
+                  </p>
                 </div>
 
                 <div
                   style={{
-                    background: "white",
+                    background: "var(--bg-primary)",
                     padding: "1.25rem",
                     borderRadius: "0.5rem",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                    border: "1px solid var(--border-color-light)",
                   }}
                 >
                   <p
                     style={{
                       fontSize: "0.75rem",
-                      color: "#64748b",
+                      color: "var(--text-secondary)",
                       marginBottom: "0.5rem",
                       textTransform: "uppercase",
                       letterSpacing: "0.05em",
+                      fontWeight: 600,
                     }}
                   >
                     Predicted Returns
                   </p>
                   <p
                     style={{
-                      fontSize: "1.5rem",
+                      fontSize: "1.75rem",
                       fontWeight: "bold",
-                      color: "#1e293b",
+                      color: "var(--text-primary)",
                       margin: 0,
                     }}
                   >
-                    {result.predicted_returned} tins
+                    {result.predicted_returned}
+                  </p>
+                  <p
+                    style={{
+                      fontSize: "0.7rem",
+                      color: "var(--text-tertiary)",
+                      marginTop: "0.25rem",
+                    }}
+                  >
+                    damaged tins
                   </p>
                 </div>
 
                 <div
                   style={{
-                    background: "white",
+                    background: "var(--bg-primary)",
                     padding: "1.25rem",
                     borderRadius: "0.5rem",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                    border: "1px solid var(--border-color-light)",
                   }}
                 >
                   <p
                     style={{
                       fontSize: "0.75rem",
-                      color: "#64748b",
+                      color: "var(--text-secondary)",
                       marginBottom: "0.5rem",
                       textTransform: "uppercase",
                       letterSpacing: "0.05em",
+                      fontWeight: 600,
                     }}
                   >
                     Estimated Loss
                   </p>
                   <p
                     style={{
-                      fontSize: "1.5rem",
+                      fontSize: "1.75rem",
                       fontWeight: "bold",
                       color: "#dc2626",
                       margin: 0,
                     }}
                   >
-                    ₹{result.estimated_loss.toFixed(0)}
+                    ₹{result.estimated_loss.toLocaleString("en-IN")}
+                  </p>
+                  <p
+                    style={{
+                      fontSize: "0.7rem",
+                      color: "var(--text-tertiary)",
+                      marginTop: "0.25rem",
+                    }}
+                  >
+                    @ ₹500/tin
                   </p>
                 </div>
 
                 <div
                   style={{
-                    background: "white",
+                    background: "var(--bg-primary)",
                     padding: "1.25rem",
                     borderRadius: "0.5rem",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                    border: "1px solid var(--border-color-light)",
                   }}
                 >
                   <p
                     style={{
                       fontSize: "0.75rem",
-                      color: "#64748b",
+                      color: "var(--text-secondary)",
                       marginBottom: "0.5rem",
                       textTransform: "uppercase",
                       letterSpacing: "0.05em",
+                      fontWeight: 600,
                     }}
                   >
                     Loading Ratio
                   </p>
                   <p
                     style={{
-                      fontSize: "1.5rem",
+                      fontSize: "1.75rem",
                       fontWeight: "bold",
                       color: result.is_overloaded ? "#dc2626" : "#16a34a",
                       margin: 0,
@@ -568,43 +620,57 @@ function PredictionPage() {
                   >
                     {((result.loading_ratio || 0) * 100).toFixed(0)}%
                   </p>
+                  <p
+                    style={{
+                      fontSize: "0.7rem",
+                      color: "var(--text-tertiary)",
+                      marginTop: "0.25rem",
+                    }}
+                  >
+                    {result.is_overloaded ? "Overloaded" : "Safe"}
+                  </p>
                 </div>
               </div>
+            </div>
 
-              {/* Recommendations */}
-              <div
+            {/* Recommendations */}
+            <div
+              style={{
+                background: "var(--bg-secondary)",
+                padding: "2rem",
+                borderRadius: "0.75rem",
+                boxShadow: "0 1px 3px var(--shadow)",
+                border: "1px solid var(--border-color-light)",
+              }}
+            >
+              <h2
                 style={{
-                  background: "white",
-                  padding: "1.5rem",
-                  borderRadius: "0.5rem",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                  fontSize: "1.25rem",
+                  marginBottom: "1.5rem",
+                  color: "var(--text-primary)",
+                  fontWeight: 600,
                 }}
               >
-                <h3
-                  style={{
-                    fontSize: "1.125rem",
-                    marginBottom: "1rem",
-                    color: "#1e293b",
-                    fontWeight: 600,
-                  }}
-                >
-                  Recommendations
-                </h3>
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "0.75rem",
-                  }}
-                >
-                  {result.recommendations.map((rec, idx) => (
+                Recommendations
+              </h2>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "1rem",
+                }}
+              >
+                {result.recommendations.map((rec, idx) => {
+                  const colors = getPriorityColor(rec.priority);
+                  return (
                     <div
                       key={idx}
                       style={{
-                        padding: "1rem",
-                        background: "#f8fafc",
+                        padding: "1.25rem",
+                        borderLeft: `4px solid ${colors.border}`,
+                        background: colors.bg,
                         borderRadius: "0.375rem",
-                        borderLeft: `4px solid ${getPriorityColor(rec.priority)}`,
                       }}
                     >
                       <div
@@ -620,10 +686,12 @@ function PredictionPage() {
                         <span
                           style={{
                             fontSize: "0.75rem",
-                            fontWeight: 600,
-                            color: getPriorityColor(rec.priority),
+                            fontWeight: 700,
+                            padding: "0.25rem 0.75rem",
+                            borderRadius: "0.25rem",
+                            background: colors.border,
+                            color: "white",
                             textTransform: "uppercase",
-                            letterSpacing: "0.05em",
                           }}
                         >
                           {rec.priority}
@@ -631,11 +699,9 @@ function PredictionPage() {
                         <span
                           style={{
                             fontSize: "0.75rem",
-                            fontWeight: 500,
-                            color: "#64748b",
-                            background: "white",
-                            padding: "0.25rem 0.5rem",
-                            borderRadius: "0.25rem",
+                            fontWeight: 600,
+                            color: colors.text,
+                            textTransform: "uppercase",
                           }}
                         >
                           {rec.category}
@@ -643,19 +709,19 @@ function PredictionPage() {
                       </div>
                       <p
                         style={{
-                          fontSize: "0.875rem",
-                          color: "#1e293b",
-                          marginBottom: "0.5rem",
+                          fontSize: "0.9375rem",
+                          color: colors.text,
+                          margin: "0.75rem 0",
                           lineHeight: 1.5,
-                          margin: "0.5rem 0",
+                          fontWeight: 500,
                         }}
                       >
                         {rec.message}
                       </p>
                       <p
                         style={{
-                          fontSize: "0.75rem",
-                          color: "#64748b",
+                          fontSize: "0.8125rem",
+                          color: colors.text,
                           fontStyle: "italic",
                           margin: 0,
                         }}
@@ -663,120 +729,146 @@ function PredictionPage() {
                         Impact: {rec.impact}
                       </p>
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Historical Context */}
-              <div
-                style={{
-                  background: "white",
-                  padding: "1.5rem",
-                  borderRadius: "0.5rem",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                }}
-              >
-                <h3
-                  style={{
-                    fontSize: "1.125rem",
-                    marginBottom: "1rem",
-                    color: "#1e293b",
-                    fontWeight: 600,
-                  }}
-                >
-                  Historical Context
-                </h3>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                    gap: "1rem",
-                  }}
-                >
-                  <div>
-                    <p
-                      style={{
-                        fontSize: "0.75rem",
-                        color: "#64748b",
-                        marginBottom: "0.25rem",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.05em",
-                      }}
-                    >
-                      Dealer Risk Level
-                    </p>
-                    <p
-                      style={{
-                        fontSize: "0.875rem",
-                        fontWeight: 600,
-                        color: "#1e293b",
-                        margin: 0,
-                      }}
-                    >
-                      {result.dealer_historical_risk || "N/A"}
-                    </p>
-                  </div>
-                  <div>
-                    <p
-                      style={{
-                        fontSize: "0.75rem",
-                        color: "#64748b",
-                        marginBottom: "0.25rem",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.05em",
-                      }}
-                    >
-                      Warehouse Performance
-                    </p>
-                    <p
-                      style={{
-                        fontSize: "0.875rem",
-                        fontWeight: 600,
-                        color: "#1e293b",
-                        margin: 0,
-                      }}
-                    >
-                      {result.warehouse_historical_risk || "N/A"}
-                    </p>
-                  </div>
-                </div>
+                  );
+                })}
               </div>
             </div>
-          ) : (
+
+            {/* Historical Context */}
             <div
               style={{
-                background: "white",
-                padding: "4rem 2rem",
-                borderRadius: "0.5rem",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                textAlign: "center",
+                background: "var(--bg-secondary)",
+                padding: "2rem",
+                borderRadius: "0.75rem",
+                boxShadow: "0 1px 3px var(--shadow)",
+                border: "1px solid var(--border-color-light)",
               }}
             >
-              <svg
+              <h2
                 style={{
-                  width: "64px",
-                  height: "64px",
-                  margin: "0 auto 1rem",
-                  color: "#cbd5e1",
+                  fontSize: "1.25rem",
+                  marginBottom: "1.5rem",
+                  color: "var(--text-primary)",
+                  fontWeight: 600,
                 }}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                />
-              </svg>
-              <p style={{ color: "#64748b", fontSize: "1rem", margin: 0 }}>
-                Enter shipment details and click "Generate Prediction" to see
-                results
-              </p>
+                Historical Context
+              </h2>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                  gap: "1rem",
+                }}
+              >
+                <div
+                  style={{
+                    padding: "1.25rem",
+                    background: "var(--bg-primary)",
+                    borderRadius: "0.5rem",
+                    border: "1px solid var(--border-color-light)",
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      color: "var(--text-secondary)",
+                      marginBottom: "0.75rem",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Dealer Historical Risk
+                  </p>
+                  <p
+                    style={{
+                      fontSize: "1.5rem",
+                      fontWeight: "bold",
+                      color:
+                        result.dealer_historical_risk === "Critical"
+                          ? "#dc2626"
+                          : result.dealer_historical_risk === "High"
+                            ? "#ea580c"
+                            : result.dealer_historical_risk === "Medium"
+                              ? "#f59e0b"
+                              : "#16a34a",
+                      margin: 0,
+                    }}
+                  >
+                    {result.dealer_historical_risk}
+                  </p>
+                </div>
+
+                <div
+                  style={{
+                    padding: "1.25rem",
+                    background: "var(--bg-primary)",
+                    borderRadius: "0.5rem",
+                    border: "1px solid var(--border-color-light)",
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      color: "var(--text-secondary)",
+                      marginBottom: "0.75rem",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Warehouse Historical Risk
+                  </p>
+                  <p
+                    style={{
+                      fontSize: "1.5rem",
+                      fontWeight: "bold",
+                      color:
+                        result.warehouse_historical_risk === "Critical"
+                          ? "#dc2626"
+                          : result.warehouse_historical_risk === "High"
+                            ? "#ea580c"
+                            : result.warehouse_historical_risk === "Medium"
+                              ? "#f59e0b"
+                              : "#16a34a",
+                      margin: 0,
+                    }}
+                  >
+                    {result.warehouse_historical_risk}
+                  </p>
+                </div>
+
+                <div
+                  style={{
+                    padding: "1.25rem",
+                    background: "var(--bg-primary)",
+                    borderRadius: "0.5rem",
+                    border: "1px solid var(--border-color-light)",
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      color: "var(--text-secondary)",
+                      marginBottom: "0.75rem",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Model Version
+                  </p>
+                  <p
+                    style={{
+                      fontSize: "1.5rem",
+                      fontWeight: "bold",
+                      color: "var(--text-primary)",
+                      margin: 0,
+                    }}
+                  >
+                    {result.model_version}
+                  </p>
+                </div>
+              </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

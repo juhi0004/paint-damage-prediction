@@ -1,18 +1,14 @@
-export type VehicleType = "Autorickshaw" | "Vikram" | "Minitruck";
-export type Warehouse = "NAG" | "MUM" | "GOA" | "KOL" | "PUN";
-export type RiskCategory = "Low" | "Medium" | "High" | "Critical";
-
 export interface PredictionRequest {
-  date: string; // ISO string
+  date: string;
   dealer_code: number;
-  warehouse: Warehouse;
+  warehouse: "NAG" | "MUM" | "GOA" | "KOL" | "PUN";
   product_code: string;
-  vehicle: VehicleType;
+  vehicle: "Autorickshaw" | "Vikram" | "Minitruck";
   shipped: number;
-  model?: "xgboost" | "ensemble";
+  model: string;
 }
 
-export interface RecommendationItem {
+export interface Recommendation {
   priority: string;
   category: string;
   message: string;
@@ -20,19 +16,19 @@ export interface RecommendationItem {
 }
 
 export interface PredictionResponse {
-  prediction_id: string;
-  timestamp: string;
-  input: PredictionRequest;
   predicted_damage_rate: number;
   predicted_returned: number;
-  risk_category: RiskCategory;
-  confidence_score: number;
   estimated_loss: number;
-  model_name: string;
-  feature_importance: Record<string, number>;
-  recommendations: RecommendationItem[];
-  dealer_historical_risk?: string;
-  warehouse_historical_risk?: string;
+  risk_category: string;
+  confidence_score: number;
+  loading_ratio: number;
   is_overloaded: boolean;
-  loading_ratio?: number;
+  recommendations: Recommendation[];
+  dealer_historical_risk: string;
+  warehouse_historical_risk: string;
+  model_version: string;
+  prediction_timestamp: string;
 }
+
+export type VehicleType = "Autorickshaw" | "Vikram" | "Minitruck";
+export type Warehouse = "NAG" | "MUM" | "GOA" | "KOL" | "PUN";

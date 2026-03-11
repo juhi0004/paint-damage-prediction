@@ -1,50 +1,20 @@
-"""
-Pydantic models for prediction requests and responses
-"""
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
+from typing import List, Literal
 from datetime import datetime
-from typing import Dict, List, Optional
-from enum import Enum
-
-from app.models.shipment import VehicleType, Warehouse
-
-
-class ModelType(str, Enum):
-    """Available model types"""
-    XGBOOST = "xgboost"
-    ENSEMBLE = "ensemble"
-
-
-class RiskCategory(str, Enum):
-    """Risk category levels"""
-    LOW = "Low"
-    MEDIUM = "Medium"
-    HIGH = "High"
-    CRITICAL = "Critical"
-
 
 class PredictionRequest(BaseModel):
-    """Request model for damage prediction"""
-    date: datetime = Field(..., description="Shipment date")
-    dealer_code: int = Field(..., ge=1, le=100, description="Dealer code (1-100)")
-    warehouse: Warehouse = Field(..., description="Warehouse location")
+    date: str = Field(..., description="ISO format datetime")
+    dealer_code: int = Field(..., ge=1, le=100, description="Dealer code between 1-100")
+    warehouse: Literal["NAG", "MUM", "GOA", "KOL", "PUN"]
     product_code: str = Field(..., min_length=9, max_length=9, description="9-digit product code")
-    vehicle: VehicleType = Field(..., description="Vehicle type")
-    shipped: int = Field(..., ge=1, description="Number of tins shipped")
-    model: Optional[ModelType] = Field(default=ModelType.XGBOOST, description="Model to use for prediction")
+    vehicle: Literal["Autorickshaw", "Vikram", "Minitruck"]
+    shipped: int = Field(..., gt=0, description="Number of tins shipped")
+    model: str = "xgboost"
 
-    @field_validator('product_code')
-    @classmethod
-    def validate_product_code(cls, v):
-        """Validate product code is 9 digits"""
-        if not v.isdigit():
-            raise ValueError('Product code must contain only digits')
-        return v
-
-    model_config = {
-        "json_schema_extra": {
+    class Config:
+        json_schema_extra = {
             "example": {
-                "date": "2026-02-21T10:00:00",
+                "date": "2026-03-11T10:00:00Z",
                 "dealer_code": 17,
                 "warehouse": "NAG",
                 "product_code": "321123678",
@@ -53,112 +23,48 @@ class PredictionRequest(BaseModel):
                 "model": "xgboost"
             }
         }
-    }
 
-
-class RecommendationItem(BaseModel):
-    """Single recommendation item"""
-    priority: str = Field(..., description="Priority level (LOW/MEDIUM/HIGH/CRITICAL)")
-    category: str = Field(..., description="Recommendation category")
-    message: str = Field(..., description="Recommendation message")
-    impact: str = Field(..., description="Expected impact")
-
+class Recommendation(BaseModel):
+    priority: str
+    category: str
+    message: str
+    impact: str
 
 class PredictionResponse(BaseModel):
-    """Response model for damage prediction"""
-    prediction_id: str = Field(..., description="Unique prediction ID")
-    timestamp: datetime = Field(default_factory=datetime.now)
-    
-    # Input echo
-    input: PredictionRequest
-    
-    # Predictions
-    predicted_damage_rate: float = Field(..., ge=0, le=1, description="Predicted damage rate (0-1)")
-    predicted_returned: int = Field(..., ge=0, description="Predicted number of tins returned")
-    risk_category: RiskCategory = Field(..., description="Risk category")
-    confidence_score: float = Field(..., ge=0, le=1, description="Model confidence (0-1)")
-    
-    # Financial impact
-    estimated_loss: float = Field(..., ge=0, description="Estimated financial loss in INR")
-    
-    # Model insights
-    model_name: str = Field(..., description="Model used for prediction")
-    feature_importance: Dict[str, float] = Field(default_factory=dict, description="Top contributing factors")
-    
-    # Recommendations
-    recommendations: List[RecommendationItem] = Field(default_factory=list)
-    
-    # Additional context
-    dealer_historical_risk: Optional[str] = None
-    warehouse_historical_risk: Optional[str] = None
-    is_overloaded: bool = Field(default=False)
-    loading_ratio: Optional[float] = None
+    predicted_damage_rate: float
+    predicted_returned: int
+    estimated_loss: float
+    risk_category: str
+    confidence_score: float
+    loading_ratio: float
+    is_overloaded: bool
+    recommendations: List[Recommendation]
+    dealer_historical_risk: str
+    warehouse_historical_risk: str
+    model_version: str
+    prediction_timestamp: str
 
-    model_config = {
-        "protected_namespaces": (),
-        "json_schema_extra": {
+    class Config:
+        json_schema_extra = {
             "example": {
-                "prediction_id": "pred_507f1f77bcf86cd799439011",
-                "timestamp": "2026-02-21T10:05:00",
-                "input": {
-                    "date": "2026-02-21T10:00:00",
-                    "dealer_code": 17,
-                    "warehouse": "NAG",
-                    "product_code": "321123678",
-                    "vehicle": "Minitruck",
-                    "shipped": 25
-                },
-                "predicted_damage_rate": 0.085,
-                "predicted_returned": 2,
-                "risk_category": "Medium",
-                "confidence_score": 0.87,
-                "estimated_loss": 1600.0,
-                "model_name": "XGBOOST",
-                "feature_importance": {
-                    "loading_ratio": 0.35,
-                    "dealer_historical_damage": 0.28,
-                    "vehicle_type": 0.15
-                },
-                "recommendations": [],
+                "predicted_damage_rate": 0.0342,
+                "predicted_returned": 1,
+                "estimated_loss": 500.0,
+                "risk_category": "Low",
+                "confidence_score": 0.945,
+                "loading_ratio": 0.833,
                 "is_overloaded": False,
-                "loading_ratio": 0.625
+                "recommendations": [
+                    {
+                        "priority": "LOW",
+                        "category": "Loading",
+                        "message": "Loading within safe limits",
+                        "impact": "Normal damage rate expected"
+                    }
+                ],
+                "dealer_historical_risk": "Medium",
+                "warehouse_historical_risk": "Medium",
+                "model_version": "xgboost_v2.1",
+                "prediction_timestamp": "2026-03-11T10:00:00Z"
             }
         }
-    }
-
-
-class BatchPredictionRequest(BaseModel):
-    """Request model for batch predictions"""
-    shipments: List[PredictionRequest] = Field(..., min_length=1, max_length=100)
-    model: Optional[ModelType] = Field(default=ModelType.XGBOOST)
-
-
-class BatchPredictionSummary(BaseModel):
-    """Summary statistics for batch predictions"""
-    total_shipments: int
-    successful_predictions: int
-    failed_predictions: int
-    average_damage_rate: float
-    risk_distribution: Dict[str, int]
-    total_estimated_loss: float
-    high_risk_shipments: int
-
-
-class BatchPredictionResponse(BaseModel):
-    """Response model for batch predictions"""
-    batch_id: str
-    timestamp: datetime = Field(default_factory=datetime.now)
-    total_shipments: int
-    predictions: List[PredictionResponse]
-    summary: BatchPredictionSummary
-
-
-class ModelInfo(BaseModel):
-    """Information about available models"""
-    name: str
-    type: str
-    version: str
-    accuracy: Optional[float] = None
-    features: int
-    last_trained: Optional[datetime] = None
-    status: str = "active"
